@@ -1,0 +1,26 @@
+[project]
+name = "cloudblueprint"
+version = "0.1.0"
+description = "Core engine for modeling AWS infrastructure, validating architecture graphs, and generating Terraform."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111,<1.0",
+    "pydantic>=2.0,<3.0",
+    "streamlit>=1.35,<2.0",
+    "httpx>=0.27,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27,<1.0",
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["cloudblueprint*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
