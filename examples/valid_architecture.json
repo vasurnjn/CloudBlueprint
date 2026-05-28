@@ -1,0 +1,309 @@
+{
+  "id": "valid-web-app",
+  "name": "Valid Web Application Architecture",
+  "resources": {
+    "vpc_main": {
+      "id": "vpc_main",
+      "name": "Main VPC",
+      "type": "VPC",
+      "properties": {
+        "cidr_block": "10.0.0.0/16"
+      },
+      "tags": {
+        "Environment": "demo"
+      }
+    },
+    "public_subnet_a": {
+      "id": "public_subnet_a",
+      "name": "Public Subnet A",
+      "type": "PUBLIC_SUBNET",
+      "properties": {
+        "cidr_block": "10.0.1.0/24",
+        "availability_zone": "us-east-1a"
+      },
+      "tags": {
+        "Tier": "public"
+      }
+    },
+    "public_subnet_b": {
+      "id": "public_subnet_b",
+      "name": "Public Subnet B",
+      "type": "PUBLIC_SUBNET",
+      "properties": {
+        "cidr_block": "10.0.2.0/24",
+        "availability_zone": "us-east-1b"
+      },
+      "tags": {
+        "Tier": "public"
+      }
+    },
+    "private_subnet_a": {
+      "id": "private_subnet_a",
+      "name": "Private Subnet A",
+      "type": "PRIVATE_SUBNET",
+      "properties": {
+        "cidr_block": "10.0.11.0/24",
+        "availability_zone": "us-east-1a"
+      },
+      "tags": {
+        "Tier": "private"
+      }
+    },
+    "private_subnet_b": {
+      "id": "private_subnet_b",
+      "name": "Private Subnet B",
+      "type": "PRIVATE_SUBNET",
+      "properties": {
+        "cidr_block": "10.0.12.0/24",
+        "availability_zone": "us-east-1b"
+      },
+      "tags": {
+        "Tier": "private"
+      }
+    },
+    "igw_main": {
+      "id": "igw_main",
+      "name": "Main Internet Gateway",
+      "type": "INTERNET_GATEWAY",
+      "properties": {},
+      "tags": {}
+    },
+    "sg_alb": {
+      "id": "sg_alb",
+      "name": "ALB Security Group",
+      "type": "SECURITY_GROUP",
+      "properties": {
+        "description": "Allow inbound HTTP traffic to the public load balancer",
+        "ingress_rules": [
+          {
+            "from_port": 80,
+            "to_port": 80,
+            "protocol": "tcp",
+            "cidr_blocks": [
+              "0.0.0.0/0"
+            ],
+            "description": "HTTP from internet"
+          }
+        ],
+        "egress_rules": [
+          {
+            "from_port": 0,
+            "to_port": 0,
+            "protocol": "-1",
+            "cidr_blocks": [
+              "0.0.0.0/0"
+            ],
+            "description": "All outbound"
+          }
+        ]
+      },
+      "tags": {
+        "Tier": "edge"
+      }
+    },
+    "sg_app": {
+      "id": "sg_app",
+      "name": "Application Security Group",
+      "type": "SECURITY_GROUP",
+      "properties": {
+        "description": "Allow application traffic from the load balancer",
+        "ingress_rules": [
+          {
+            "from_port": 80,
+            "to_port": 80,
+            "protocol": "tcp",
+            "security_group_id": "sg_alb",
+            "description": "HTTP from ALB"
+          }
+        ],
+        "egress_rules": [
+          {
+            "from_port": 0,
+            "to_port": 0,
+            "protocol": "-1",
+            "cidr_blocks": [
+              "0.0.0.0/0"
+            ],
+            "description": "All outbound"
+          }
+        ]
+      },
+      "tags": {
+        "Tier": "app"
+      }
+    },
+    "sg_db": {
+      "id": "sg_db",
+      "name": "Database Security Group",
+      "type": "SECURITY_GROUP",
+      "properties": {
+        "description": "Allow database traffic from the application tier",
+        "ingress_rules": [
+          {
+            "from_port": 5432,
+            "to_port": 5432,
+            "protocol": "tcp",
+            "security_group_id": "sg_app",
+            "description": "PostgreSQL from app instances"
+          }
+        ],
+        "egress_rules": [
+          {
+            "from_port": 0,
+            "to_port": 0,
+            "protocol": "-1",
+            "cidr_blocks": [
+              "0.0.0.0/0"
+            ],
+            "description": "All outbound"
+          }
+        ]
+      },
+      "tags": {
+        "Tier": "database"
+      }
+    },
+    "ec2_app": {
+      "id": "ec2_app",
+      "name": "Application Server",
+      "type": "EC2_INSTANCE",
+      "properties": {
+        "ami": "ami-1234567890abcdef0",
+        "instance_type": "t3.micro",
+        "associate_public_ip_address": false
+      },
+      "tags": {
+        "Tier": "app"
+      }
+    },
+    "alb_public": {
+      "id": "alb_public",
+      "name": "Public Application Load Balancer",
+      "type": "APPLICATION_LOAD_BALANCER",
+      "properties": {
+        "internet_facing": true,
+        "listener_port": 80,
+        "target_port": 80,
+        "protocol": "HTTP"
+      },
+      "tags": {
+        "Tier": "edge"
+      }
+    },
+    "rds_primary": {
+      "id": "rds_primary",
+      "name": "Primary PostgreSQL Database",
+      "type": "RDS_DATABASE",
+      "properties": {
+        "engine": "postgres",
+        "instance_class": "db.t3.micro",
+        "allocated_storage": 20,
+        "username": "appadmin",
+        "db_name": "appdb",
+        "publicly_accessible": false
+      },
+      "tags": {
+        "Tier": "database"
+      }
+    },
+    "s3_assets": {
+      "id": "s3_assets",
+      "name": "Application Asset Bucket",
+      "type": "S3_BUCKET",
+      "properties": {
+        "bucket_prefix": "cloudblueprint-assets-"
+      },
+      "tags": {
+        "Tier": "storage"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "source_id": "public_subnet_a",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "public_subnet_b",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "private_subnet_a",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "private_subnet_b",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "igw_main",
+      "target_id": "vpc_main",
+      "type": "ATTACHES_TO"
+    },
+    {
+      "source_id": "sg_alb",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "sg_app",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "sg_db",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "ec2_app",
+      "target_id": "private_subnet_a",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "ec2_app",
+      "target_id": "sg_app",
+      "type": "USES_SECURITY_GROUP"
+    },
+    {
+      "source_id": "alb_public",
+      "target_id": "public_subnet_a",
+      "type": "CONNECTS_TO"
+    },
+    {
+      "source_id": "alb_public",
+      "target_id": "public_subnet_b",
+      "type": "CONNECTS_TO"
+    },
+    {
+      "source_id": "alb_public",
+      "target_id": "sg_alb",
+      "type": "USES_SECURITY_GROUP"
+    },
+    {
+      "source_id": "alb_public",
+      "target_id": "ec2_app",
+      "type": "TARGETS"
+    },
+    {
+      "source_id": "rds_primary",
+      "target_id": "private_subnet_a",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "rds_primary",
+      "target_id": "private_subnet_b",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "rds_primary",
+      "target_id": "sg_db",
+      "type": "USES_SECURITY_GROUP"
+    }
+  ]
+}
+

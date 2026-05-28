@@ -1,0 +1,125 @@
+{
+  "id": "invalid-web-app",
+  "name": "Invalid Web Application Architecture",
+  "resources": {
+    "vpc_main": {
+      "id": "vpc_main",
+      "name": "Main VPC",
+      "type": "VPC",
+      "properties": {
+        "cidr_block": "10.1.0.0/16"
+      },
+      "tags": {}
+    },
+    "public_subnet_orphan": {
+      "id": "public_subnet_orphan",
+      "name": "Orphan Public Subnet",
+      "type": "PUBLIC_SUBNET",
+      "properties": {
+        "cidr_block": "10.1.1.0/24",
+        "availability_zone": "us-east-1a"
+      },
+      "tags": {}
+    },
+    "private_subnet_a": {
+      "id": "private_subnet_a",
+      "name": "Private Subnet A",
+      "type": "PRIVATE_SUBNET",
+      "properties": {
+        "cidr_block": "10.1.11.0/24",
+        "availability_zone": "us-east-1a"
+      },
+      "tags": {}
+    },
+    "igw_orphan": {
+      "id": "igw_orphan",
+      "name": "Detached Internet Gateway",
+      "type": "INTERNET_GATEWAY",
+      "properties": {},
+      "tags": {}
+    },
+    "sg_orphan": {
+      "id": "sg_orphan",
+      "name": "Orphan Security Group",
+      "type": "SECURITY_GROUP",
+      "properties": {
+        "description": "No VPC relationship"
+      },
+      "tags": {}
+    },
+    "ec2_bad": {
+      "id": "ec2_bad",
+      "name": "Misconfigured EC2",
+      "type": "EC2_INSTANCE",
+      "properties": {
+        "ami": "ami-1234567890abcdef0",
+        "instance_type": "t3.micro",
+        "associate_public_ip_address": true
+      },
+      "tags": {}
+    },
+    "alb_bad": {
+      "id": "alb_bad",
+      "name": "Misconfigured Load Balancer",
+      "type": "APPLICATION_LOAD_BALANCER",
+      "properties": {
+        "internet_facing": true,
+        "target_port": 80
+      },
+      "tags": {}
+    },
+    "rds_public": {
+      "id": "rds_public",
+      "name": "Public Database",
+      "type": "RDS_DATABASE",
+      "properties": {
+        "engine": "postgres",
+        "instance_class": "db.t3.micro",
+        "allocated_storage": 20,
+        "username": "admin",
+        "publicly_accessible": true
+      },
+      "tags": {}
+    },
+    "s3_assets": {
+      "id": "s3_assets",
+      "name": "Application Asset Bucket",
+      "type": "S3_BUCKET",
+      "properties": {},
+      "tags": {}
+    }
+  },
+  "relationships": [
+    {
+      "source_id": "private_subnet_a",
+      "target_id": "vpc_main",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "alb_bad",
+      "target_id": "private_subnet_a",
+      "type": "CONNECTS_TO"
+    },
+    {
+      "source_id": "alb_bad",
+      "target_id": "missing_ec2",
+      "type": "TARGETS"
+    },
+    {
+      "source_id": "rds_public",
+      "target_id": "public_subnet_orphan",
+      "type": "BELONGS_TO"
+    },
+    {
+      "source_id": "ec2_bad",
+      "target_id": "alb_bad",
+      "type": "DEPENDS_ON"
+    },
+    {
+      "source_id": "alb_bad",
+      "target_id": "ec2_bad",
+      "type": "DEPENDS_ON"
+    }
+  ]
+}
+
