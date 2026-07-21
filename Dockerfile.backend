@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy configuration and setup files
+COPY pyproject.toml README.md ./
+
+# Copy examples directory (referenced by the service layer)
+COPY examples ./examples
+
+# Copy the core package source
+COPY cloudblueprint ./cloudblueprint
+
+# Create directory for persistent SQLite database
+RUN mkdir -p /data
+
+# Install the application and its dependencies
+RUN pip install --no-cache-dir .
+
+EXPOSE 8000
+
+# Run FastAPI backend using Uvicorn
+CMD ["python", "-m", "uvicorn", "cloudblueprint.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

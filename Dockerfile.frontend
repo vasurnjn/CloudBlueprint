@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy configuration and setup files
+COPY pyproject.toml README.md ./
+
+# Copy the core package source
+COPY cloudblueprint ./cloudblueprint
+
+# Install the application and its dependencies (which includes streamlit and httpx)
+RUN pip install --no-cache-dir .
+
+EXPOSE 8501
+
+# Run Streamlit frontend
+CMD ["python", "-m", "streamlit", "run", "cloudblueprint/frontend/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]

@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      - CLOUDBLUEPRINT_DB_PATH=/data/cloudblueprint.sqlite3
+    volumes:
+      - sqlite_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - CLOUDBLUEPRINT_BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  sqlite_data:
