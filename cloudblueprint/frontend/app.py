@@ -34,7 +34,10 @@ client = APIClient(st.session_state.backend_url)
 
 # Helper function to clear select box state if needed
 def select_architecture(arch_id: str | None) -> None:
-    st.session_state.selected_architecture_id = arch_id
+    if st.session_state.get("selected_architecture_id") != arch_id:
+        st.session_state.selected_architecture_id = arch_id
+        st.session_state.pop("tf_generation_blocked", None)
+
 
 
 # Helper function to create ZIP from files list
@@ -663,6 +666,20 @@ with tab4:
     st.caption("ℹ️ Outbound internet access for resources in private subnets (NAT Gateway) is not currently modeled in this MVP.")
     st.caption("⚠️ The AMI IDs generated are placeholders. Remember to replace them with valid AMI IDs for your AWS region before actual deployment.")
     
+    # Show persistent generation blocked error if present in session state
+    if "tf_generation_blocked" in st.session_state:
+        err = st.session_state.tf_generation_blocked
+        if err.get("architecture_id") == arch["id"]:
+            st.error(
+                "❌ **Terraform generation is blocked.**\n\n"
+                "The selected architecture contains validation errors.\n\n"
+                "Please resolve the errors in **3. VALIDATE (Diagnostics)** before generating Terraform."
+            )
+            with st.expander("Show Blocking Errors Details"):
+                st.write(err.get("detail", ""))
+        else:
+            st.session_state.pop("tf_generation_blocked", None)
+
     # Load Latest Button (Checks if we can retrieve already generated files)
     col_tfa, col_tfb = st.columns(2)
     with col_tfa:
@@ -673,23 +690,32 @@ with tab4:
     tf_record = None
 
     if gen_tf:
+        st.session_state.pop("tf_generation_blocked", None)
         try:
             tf_record = client.generate_terraform(arch["id"])
             st.session_state.tf_record = tf_record
             st.success("Terraform generated successfully!")
+            st.rerun()
         except APIHTTPError as e:
-            st.error(f"Terraform Generation Blocked:\n{e.detail}")
             if e.raw_response and "validation_results" in e.raw_response:
+                st.session_state.tf_generation_blocked = {
+                    "architecture_id": arch["id"],
+                    "detail": e.detail,
+                    "validation_results": e.raw_response["validation_results"],
+                }
                 st.session_state.validation_report = {
                     "architecture_id": arch["id"],
                     "is_valid": False,
                     "results": e.raw_response["validation_results"],
                 }
                 st.rerun()
+            else:
+                st.error(f"Terraform Generation Blocked:\n{e.detail}")
         except APIClientError as e:
             st.error(f"Terraform generation failed: {str(e)}")
 
     if load_latest:
+        st.session_state.pop("tf_generation_blocked", None)
         try:
             tf_record = client.get_latest_terraform(arch["id"])
             st.session_state.tf_record = tf_record
@@ -701,6 +727,7 @@ with tab4:
                 st.error(str(e))
         except APIClientError as e:
             st.error(str(e))
+
 
     # Show generated files if present in session state
     if "tf_record" in st.session_state and st.session_state.tf_record:

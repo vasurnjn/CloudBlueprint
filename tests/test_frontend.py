@@ -102,3 +102,23 @@ def test_api_client_connection_error_handling() -> None:
         with pytest.raises(APIConnectionError) as excinfo:
             client.health()
         assert "Could not connect to backend" in str(excinfo.value)
+
+
+def test_api_client_http_validation_error_payload() -> None:
+    client = APIClient()
+    mock_response = MagicMock()
+    mock_response.status_code = 400
+    validation_payload = {
+        "detail": "Validation Failed",
+        "validation_results": [
+            {"rule_id": "REF001", "severity": "ERROR", "message": "Reference error"}
+        ]
+    }
+    mock_response.json.return_value = validation_payload
+
+    with patch.object(client.client, "request", return_value=mock_response):
+        with pytest.raises(APIHTTPError) as excinfo:
+            client.generate_terraform("arch1")
+        assert excinfo.value.status_code == 400
+        assert excinfo.value.raw_response == validation_payload
+
