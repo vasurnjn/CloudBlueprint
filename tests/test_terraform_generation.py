@@ -189,3 +189,30 @@ def test_security_group_name_does_not_start_with_sg() -> None:
     result_custom = TerraformGenerator().generate(arch_custom)
     network_tf_custom = result_custom.as_dict()["network.tf"]
     assert_contains_normalized(network_tf_custom, 'name = "sec-custom-group"')
+
+
+def test_terraform_renderer_consecutive_alignment_grouping() -> None:
+    block = TerraformBlock(
+        "resource",
+        ["aws_instance", "web"],
+        attributes={
+            "ami": "ami-123",
+            "instance_type": "t3.micro",
+            "tags": {"Name": "web", "Tier": "app"},
+            "vpc_security_group_ids": [ref("aws_security_group.sg.id")],
+            "associate_public_ip_address": False,
+        },
+    )
+    rendered = block.render()
+    
+    # 1. ami & instance_type are aligned to max length 13
+    assert '  ami           = "ami-123"' in rendered
+    assert '  instance_type = "t3.micro"' in rendered
+    
+    # 2. tags is not padded
+    assert '  tags = {' in rendered
+    
+    # 3. vpc_security_group_ids & associate_public_ip_address are aligned to max length 27
+    assert '  vpc_security_group_ids      = [aws_security_group.sg.id]' in rendered
+    assert '  associate_public_ip_address = false' in rendered
+

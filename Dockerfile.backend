@@ -1,21 +1,24 @@
 FROM python:3.11-slim
 
+# Create system group and user
+RUN groupadd -g 10001 appuser && \
+    useradd -u 10001 -g appuser -m -s /sbin/nologin appuser
+
 WORKDIR /app
 
-# Copy configuration and setup files
+# Copy configuration, setup files and codebase
 COPY pyproject.toml README.md ./
-
-# Copy examples directory (referenced by the service layer)
 COPY examples ./examples
-
-# Copy the core package source
 COPY cloudblueprint ./cloudblueprint
 
-# Create directory for persistent SQLite database
-RUN mkdir -p /data
-
-# Install the application and its dependencies
+# Install the application and dependencies globally
 RUN pip install --no-cache-dir .
+
+# Create directory for persistent SQLite database and set ownership
+RUN mkdir -p /data && chown -R appuser:appuser /data
+
+# Switch to the non-root user for runtime execution
+USER appuser
 
 EXPOSE 8000
 

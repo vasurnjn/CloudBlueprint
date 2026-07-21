@@ -196,3 +196,63 @@ def test_api_example_loading_endpoints(tmp_path) -> None:
     assert validate_invalid_response.status_code == 200
     assert validate_invalid_response.json()["is_valid"] is False
 
+
+def test_api_duplicate_architecture_creation_returns_conflict(tmp_path) -> None:
+    payload = {
+        "id": "arch-dup",
+        "name": "Architecture Dup",
+        "resources": {},
+        "relationships": [],
+    }
+    with _client(tmp_path) as client:
+        first_response = client.post("/architectures", json=payload)
+        assert first_response.status_code == 201
+        
+        second_response = client.post("/architectures", json=payload)
+        assert second_response.status_code == 409
+        assert "already exists" in second_response.json()["detail"]
+
+
+def test_api_architecture_id_mismatch_returns_bad_request(tmp_path) -> None:
+    payload = {
+        "id": "arch-mismatch",
+        "name": "Architecture Mismatch",
+        "resources": {},
+        "relationships": [],
+    }
+    with _client(tmp_path) as client:
+        client.post("/architectures", json=payload)
+        
+        mismatched_payload = {**payload, "id": "other-id"}
+        response = client.put("/architectures/arch-mismatch", json=mismatched_payload)
+        assert response.status_code == 400
+        assert "id in the path must match the request body" in response.json()["detail"]
+
+
+def test_api_delete_non_existent_relationship_returns_not_found(tmp_path) -> None:
+    with _client(tmp_path) as client:
+        client.post(
+            "/architectures",
+            json={
+                "id": "arch",
+                "name": "Architecture",
+                "resources": {
+                    "vpc": {"id": "vpc", "name": "VPC", "type": "VPC"},
+                    "subnet": {
+                        "id": "subnet",
+                        "name": "Subnet",
+                        "type": "PUBLIC_SUBNET",
+                    },
+                },
+                "relationships": [],
+            },
+        )
+        delete_response = client.request(
+            "DELETE",
+            "/architectures/arch/relationships",
+            json={"source_id": "subnet", "target_id": "vpc", "type": "BELONGS_TO"},
+        )
+        assert delete_response.status_code == 404
+        assert "relationship was not found" in delete_response.json()["detail"]
+
+

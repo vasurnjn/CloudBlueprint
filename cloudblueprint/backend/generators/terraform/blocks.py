@@ -24,16 +24,33 @@ class TerraformBlock:
         indent = "  " * indent_level
         labels = "".join(f" {json.dumps(label)}" for label in self.labels)
         lines = [f"{indent}{self.block_type}{labels} {{"]
-        if self.attributes:
-            max_key_len = max(len(key) for key in self.attributes.keys())
-            for key, value in self.attributes.items():
-                rendered = render_value(value, indent_level + 1)
-                padding = " " * (max_key_len - len(key))
-                lines.append(f"{indent}  {key}{padding} = {rendered}")
+        
+        current_group: list[tuple[str, str]] = []
+        
+        def render_group() -> None:
+            if not current_group:
+                return
+            max_key_len = max(len(k) for k, _ in current_group)
+            for k, v in current_group:
+                padding = " " * (max_key_len - len(k))
+                lines.append(f"{indent}  {k}{padding} = {v}")
+            current_group.clear()
+
+        for key, value in self.attributes.items():
+            rendered = render_value(value, indent_level + 1)
+            if "\n" in rendered:
+                render_group()
+                lines.append(f"{indent}  {key} = {rendered}")
+            else:
+                current_group.append((key, rendered))
+        
+        render_group()
+        
         for block in self.nested_blocks:
             lines.append(block.render(indent_level + 1))
         lines.append(f"{indent}}}")
         return "\n".join(lines)
+
 
 
 def ref(expression: str) -> TerraformExpression:
@@ -86,13 +103,31 @@ def _render_map(values: dict[str, Any], indent_level: int) -> str:
     indent = "  " * indent_level
     child_indent = "  " * (indent_level + 1)
     lines = ["{"]
-    max_key_len = max(len(_render_map_key(key)) for key in values.keys())
+    
+    current_group: list[tuple[str, str]] = []
+    
+    def render_group() -> None:
+        if not current_group:
+            return
+        max_key_len = max(len(k) for k, _ in current_group)
+        for k, v in current_group:
+            padding = " " * (max_key_len - len(k))
+            lines.append(f"{child_indent}{k}{padding} = {v}")
+        current_group.clear()
+
     for key, value in values.items():
         k_str = _render_map_key(key)
-        padding = " " * (max_key_len - len(k_str))
-        lines.append(f"{child_indent}{k_str}{padding} = {render_value(value, indent_level + 1)}")
+        rendered = render_value(value, indent_level + 1)
+        if "\n" in rendered:
+            render_group()
+            lines.append(f"{child_indent}{k_str} = {rendered}")
+        else:
+            current_group.append((k_str, rendered))
+            
+    render_group()
     lines.append(f"{indent}}}")
     return "\n".join(lines)
+
 
 
 def _render_map_key(key: str) -> str:

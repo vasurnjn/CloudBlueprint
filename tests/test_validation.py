@@ -111,3 +111,26 @@ def test_public_subnet_requires_internet_gateway() -> None:
     assert results[0].severity == Severity.ERROR
 
 
+def test_subnet_belongs_to_vpc_rule() -> None:
+    from cloudblueprint.backend.validators.networking import SubnetBelongsToVpcRule
+    subnet = Resource(
+        id="subnet_a",
+        name="Subnet A",
+        type=ResourceType.PUBLIC_SUBNET,
+        properties={"cidr_block": "10.0.1.0/24"},
+    )
+    architecture = InfrastructureArchitecture(
+        id="subnet-test",
+        name="Subnet Test",
+        resources={"subnet_a": subnet},
+        relationships=[],
+    )
+
+    results = ValidationEngine(rules=[SubnetBelongsToVpcRule()]).validate(architecture)
+
+    assert len(results) == 1
+    assert results[0].rule_id == "NET001"
+    assert results[0].severity == Severity.ERROR
+
+
+

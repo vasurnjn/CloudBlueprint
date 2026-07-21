@@ -22,7 +22,7 @@ def connect(database_path: str | Path) -> sqlite3.Connection:
     path = str(database_path)
     if path != ":memory:" and not path.startswith("file:"):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path)
+    connection = sqlite3.connect(path, timeout=10.0)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
@@ -30,6 +30,7 @@ def connect(database_path: str | Path) -> sqlite3.Connection:
 
 def initialize_database(database_path: str | Path) -> None:
     with connect(database_path) as connection:
+        connection.execute("PRAGMA journal_mode = WAL")
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS architectures (
